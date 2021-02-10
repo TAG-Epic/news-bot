@@ -1,6 +1,7 @@
-from speedian.types import Cog, CommandContext, ChannelType
+from speedian.types import Cog, CommandContext
 from speedian.annotations import command, option
 from speedcord.http import Route
+from speedcord.exceptions import Forbidden, HTTPException, NotFound
 from asyncio import sleep
 from os import environ as env
 from urllib.parse import quote as uriencode
@@ -28,7 +29,10 @@ class SearchContext:
         self.expired = True
         r = Route("DELETE", "/channels/{channel_id}/messages/{message_id}", channel_id=self.ctx.message.channel_id,
                   message_id=self.message_id)
-        await self.ctx.client.http.request(r)
+        try:
+            await self.ctx.client.http.request(r)
+        except HTTPException:
+            pass
         contexts.remove(self)
 
     def get_page(self):
@@ -53,20 +57,30 @@ class SearchContext:
         }
 
     async def send_initial(self):
-        await self.ctx.send(embed=self.get_page())
+        try:
+            await self.ctx.send(embed=self.get_page())
+        except Forbidden:
+            await self.expire()
 
     async def update(self):
         r = Route("PATCH", "/channels/{channel_id}/messages/{message_id}", channel_id=self.ctx.message.channel_id,
                   message_id=self.message_id)
-        await self.ctx.client.http.request(r, json={
-            "embed": self.get_page()
-        })
+        try:
+            await self.ctx.client.http.request(r, json={
+                "embed": self.get_page()
+            })
+        except NotFound:
+            await self.expire()
 
     async def initial_callback(self, message_id):
         self.message_id = message_id
-        await self.add_reaction("%E2%97%80%EF%B8%8F")  # Left arrow
-        await self.add_reaction("%E2%9D%A4%EF%B8%8F")  # Heart
-        await self.add_reaction("%E2%9E%A1%EF%B8%8F")  # Right arrow
+        try:
+            await self.add_reaction("%E2%97%80%EF%B8%8F")  # Left arrow
+            await self.add_reaction("%E2%9D%A4%EF%B8%8F")  # Heart
+            await self.add_reaction("%E2%9E%A1%EF%B8%8F")  # Right arrow
+        except Forbidden:
+            await self.expire()
+            await self.ctx.send("I need add reactions permission to work!")
 
     async def add_reaction(self, reaction):
         r = Route("PUT", "/channels/{channel_id}/messages/{message_id}/reactions/{emoji}/@me",
@@ -77,7 +91,10 @@ class SearchContext:
         r = Route("DELETE", "/channels/{channel_id}/messages/{message_id}/reactions/{emoji}/{user_id}",
                   channel_id=self.ctx.message.channel_id, message_id=self.message_id, emoji=reaction,
                   user_id=self.author)
-        await self.ctx.client.http.request(r)
+        try:
+            await self.ctx.client.http.request(r)
+        except Forbidden:
+            pass
 
     async def on_reaction(self, data):
         emoji = uriencode(data["emoji"]["name"])
@@ -98,9 +115,12 @@ class SearchContext:
             await self.expire()
 
             r = Route("POST", "/channels/{news_channel_id}/followers", news_channel_id=page["id"])
-            await self.ctx.client.http.request(r, json={
-                "webhook_channel_id": self.ctx.message.channel_id
-            })
+            try:
+                await self.ctx.client.http.request(r, json={
+                    "webhook_channel_id": self.ctx.message.channel_id
+                })
+            except Forbidden:
+                await self.ctx.send("I need manage webhooks permissions to work!")
         elif emoji == "%E2%9E%A1%EF%B8%8F":
             self.active_page += 1
             await self.update()
@@ -134,7 +154,7 @@ class Discover(Cog):
         search_results = await self.client.elastic.search(index="channels", q="*%s*" % query)
         search_results = [hit["_source"] for hit in search_results["hits"]["hits"]]
         if len(search_results) == 0:
-            await ctx.send("Huh, it doesn't exist yet? Be the first to make it!")
+            await ctx.send("Huh, it doesn't exist yet? Be the first to make one!")
             return
         context = SearchContext(ctx, search_results, ctx.message.member["user"]["id"])
         contexts.append(context)
