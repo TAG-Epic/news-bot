@@ -10,8 +10,8 @@ services:
             - elastic
     elastic:
         image: docker.elastic.co/elasticsearch/elasticsearch:7.11.0
-        environment:
-            - "discovery.type:single-node"
+        env_file:
+            - .env
         volumes:
             - newsbot_elastic:/usr/share/elasticsearch/data
 
