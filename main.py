@@ -11,7 +11,6 @@ from elasticsearch import AsyncElasticsearch
 basicConfig(level=DEBUG)
 
 client = Client(1536, env["TOKEN"])
-mongo = MongoClient(env.get("MONGO_URI"))
 client.elastic = AsyncElasticsearch(hosts=("localhost", "elastic")[bool(env.get("PROD_ENV"))])
 
 commands = CommandHandler(client, env["CLIENT_ID"], guild_id=env.get("DEBUG_GUILD"))
