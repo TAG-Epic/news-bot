@@ -97,7 +97,7 @@ class SearchContext:
                 return
             await self.expire()
 
-            r = Route("POST", "/channels/{news_channel_id}/followers", news_channel_id=page["_id"])
+            r = Route("POST", "/channels/{news_channel_id}/followers", news_channel_id=page["id"])
             await self.ctx.client.http.request(r, json={
                 "webhook_channel_id": self.ctx.message.channel_id
             })
@@ -131,7 +131,8 @@ class Discover(Cog):
     @command(description="Search and find news!")
     @option("query", str, description="What to search for")
     async def search(self, ctx: CommandContext, query):
-        search_results = list(self.client.db.channels.find({"$text": {"$search": query}}))
+        search_results = await self.client.elastic.search(index="channels", q="*%s*" % query)
+        search_results = [hit["_source"] for hit in search_results["hits"]["hits"]]
         if len(search_results) == 0:
             await ctx.send("Huh, it doesn't exist yet? Be the first to make it!")
             return
@@ -142,7 +143,8 @@ class Discover(Cog):
     @command(description="Lists all news channel for you to browse through")
     @option("page", int, description="Jump to a specific page", required=False)
     async def list(self, ctx, page: int = 0):
-        results = list(self.client.db.channels.find())
+        results = await self.client.elastic.search(index="channels")
+        results = [hit["_source"] for hit in results["hits"]["hits"]]
         context = SearchContext(ctx, results, ctx.message.member["user"]["id"])
         context.active_page = page
         contexts.append(context)
