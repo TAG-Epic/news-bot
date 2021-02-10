@@ -1,3 +1,3 @@
 speedcord==0.3.116
-speedian==1.0.1
+speedian==1.0.2
 elasticsearch~=7.10.1
