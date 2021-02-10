@@ -5,7 +5,6 @@ from speedcord import Client
 from speedian.command_handler import CommandHandler
 from logging import basicConfig, DEBUG
 from os import environ as env
-from pymongo import MongoClient
 from elasticsearch import AsyncElasticsearch
 
 basicConfig(level=DEBUG)
