@@ -15,6 +15,7 @@ client.elastic = AsyncElasticsearch(hosts=("localhost", "elastic")[bool(env.get(
 commands = CommandHandler(client, env["CLIENT_ID"], guild_id=env.get("DEBUG_GUILD"))
 commands.load_extension("discover")
 commands.load_extension("manage")
+commands.load_extension("utils")
 
 
 async def setup():
