@@ -58,7 +58,7 @@ class SearchContext:
 
     async def send_initial(self):
         try:
-            await self.ctx.send(embed=self.get_page())
+            await self.ctx.send(embeds=[self.get_page()])
         except Forbidden:
             await self.expire()
 
@@ -67,7 +67,7 @@ class SearchContext:
                   message_id=self.message_id)
         try:
             await self.ctx.client.http.request(r, json={
-                "embed": self.get_page()
+                "embeds": [self.get_page()]
             })
         except NotFound:
             await self.expire()
